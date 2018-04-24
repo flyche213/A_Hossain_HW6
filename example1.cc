@@ -8,6 +8,11 @@
 
 #include <iostream>
 #include "cdk.h"
+#include <string>
+#include <stdint.h>
+#include <stdio.h>
+#include <iomanip>
+#include <fstream>
 
 
 #define MATRIX_WIDTH 3
@@ -18,9 +23,41 @@
 using namespace std;
 
 
+
+  const int maxRecordStringLength = 25;
+
+
+class BinaryFileHeader
+{
+public:
+  uint32_t magicNumber; /* Should be 0xFEEDFACE */
+  uint32_t versionNumber;
+  uint64_t numRecords;
+};
+// const int maxRecordStringLength = 25;
+class BinaryFileRecord
+{
+public:
+  uint8_t strLength;
+  char stringBuffer[maxRecordStringLength];
+};
+
 int main()
 {
+  BinaryFileHeader *myHeader = new BinaryFileHeader();
 
+  ifstream binInfile ("cs337.bin", ios::in | ios::binary);
+
+  binInfile.read((char *) myHeader, sizeof(BinaryFileHeader));
+  cout << "Value was: " << setprecision(10) << myHeader->versionNumber << endl;
+  // binInfile.close();
+  BinaryFileRecord *myRecords = new BinaryFileRecord[myHeader->numRecords]();
+  for (uint32_t i=0; i < myHeader->numRecords; i++)
+    {
+      binInfile.read((char*)(myRecords + i), sizeof(BinaryFileRecord));
+
+    }
+  binInfile.close();
   WINDOW	*window;
   CDKSCREEN	*cdkscreen;
   CDKMATRIX     *myMatrix;           // CDK Screen Matrix
@@ -68,9 +105,29 @@ int main()
   /*
    * Dipslay a message
    */
-  setCDKMatrixCell(myMatrix, 2, 2, "Test Message");
-  drawCDKMatrix(myMatrix, true);    /* required  */
+  char buffer[100];
+  sprintf(buffer, "%X", myHeader->magicNumber);
+  string str = "0X";
+  str = str + buffer;
+   setCDKMatrixCell(myMatrix, 1, 1, str.c_str());
+   drawCDKMatrix(myMatrix, true);    /* required  */
+   str = "Version:";
+   str = str + to_string(myHeader->versionNumber);
+   setCDKMatrixCell(myMatrix, 1, 2, str.c_str());
+   drawCDKMatrix(myMatrix, true);
 
+   str = "NumRecords:";
+   str = str + to_string(myHeader->numRecords);
+   setCDKMatrixCell(myMatrix, 1, 3, str.c_str());
+
+   for(uint32_t i = 0; i < myHeader->numRecords; i++)
+     {
+       string str = "strlen: " + to_string(static_cast<uint16_t>(myRecords[i].strLength));
+       setCDKMatrixCell(myMatrix,2 + i, 1, str.c_str());
+
+       setCDKMatrixCell(myMatrix, 2 + i, 2, myRecords[i].stringBuffer);
+     }
+   drawCDKMatrix(myMatrix, true);
   /* So we can see results, pause until a key is pressed. */
   unsigned char x;
   cin >> x;
